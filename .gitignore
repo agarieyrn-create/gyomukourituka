@@ -1,0 +1,9 @@
+# clasp設定ファイル（scriptIdを含むため各自ローカルで管理）
+.clasp.json
+
+# Node.js
+node_modules/
+
+# OS
+.DS_Store
+Thumbs.db
