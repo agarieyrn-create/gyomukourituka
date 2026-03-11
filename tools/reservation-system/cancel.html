@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>予約キャンセル</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif;
+  background: #f5f7fa;
+  color: #333;
+  line-height: 1.6;
+}
+
+.container {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 16px;
+  min-height: 100vh;
+}
+
+.header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #fff;
+  text-align: center;
+  padding: 20px 16px;
+  border-radius: 12px;
+  margin-bottom: 20px;
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+}
+
+.header h1 { font-size: 20px; letter-spacing: 2px; margin-bottom: 4px; }
+.header p { font-size: 13px; opacity: 0.85; }
+
+.screen { display: none; }
+.screen.active { display: block; }
+
+.card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  margin-bottom: 16px;
+}
+
+.form-group {
+  margin-bottom: 16px;
+}
+
+.form-group label {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  color: #555;
+  margin-bottom: 6px;
+}
+
+.form-group input {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-size: 15px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: #fff;
+}
+
+.form-group input:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.15);
+}
+
+.btn {
+  width: 100%;
+  padding: 14px;
+  border: none;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: opacity 0.2s;
+  letter-spacing: 1px;
+}
+
+.btn:hover { opacity: 0.9; }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.btn-primary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #fff;
+}
+
+.btn-danger {
+  background: #e74c3c;
+  color: #fff;
+}
+
+/* 予約情報表示 */
+.reservation-info {
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 20px;
+}
+
+.reservation-info .info-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid #eee;
+  font-size: 14px;
+}
+
+.reservation-info .info-row:last-child { border-bottom: none; }
+.reservation-info .info-label { color: #888; }
+.reservation-info .info-value { font-weight: 500; }
+
+/* 完了 */
+.complete-msg {
+  text-align: center;
+  padding: 40px 20px;
+}
+
+.complete-msg h2 {
+  font-size: 20px;
+  margin-bottom: 12px;
+}
+
+.complete-msg p {
+  color: #666;
+  font-size: 14px;
+  margin-bottom: 8px;
+}
+
+/* ローディング */
+.loading-overlay {
+  display: none;
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: rgba(255,255,255,0.85);
+  z-index: 1000;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+}
+
+.loading-overlay.active { display: flex; }
+
+.spinner {
+  width: 40px; height: 40px;
+  border: 4px solid #e0e0e0;
+  border-top: 4px solid #667eea;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.loading-text { margin-top: 12px; color: #667eea; font-size: 14px; }
+
+.page-links {
+  text-align: center;
+  margin-top: 20px;
+  font-size: 13px;
+}
+
+.page-links a {
+  color: #667eea;
+  text-decoration: none;
+  margin: 0 8px;
+}
+
+.page-links a:hover { text-decoration: underline; }
+
+.warning-box {
+  background: #fff3cd;
+  border: 1px solid #ffc107;
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  font-size: 13px;
+  color: #856404;
+}
+</style>
+</head>
+<body>
+
+<div class="loading-overlay" id="loading">
+  <div class="spinner"></div>
+  <div class="loading-text">処理中...</div>
+</div>
+
+<div class="container">
+  <div class="header">
+    <h1>予約キャンセル</h1>
+    <p>予約のキャンセルはこちらから</p>
+  </div>
+
+  <!-- 検索画面 -->
+  <div class="screen active" id="screen-search">
+    <div class="card">
+      <div class="form-group">
+        <label>予約ID</label>
+        <input type="text" id="inputReservationId" placeholder="例：RSV-20260401-001">
+      </div>
+      <div class="form-group">
+        <label>氏名</label>
+        <input type="text" id="inputName" placeholder="例：山田 太郎">
+      </div>
+      <button class="btn btn-primary" onclick="searchReservation()">予約を検索する</button>
+    </div>
+  </div>
+
+  <!-- 確認画面 -->
+  <div class="screen" id="screen-confirm">
+    <div class="card">
+      <h3 style="margin-bottom:16px;font-size:16px;">予約内容</h3>
+      <div class="reservation-info" id="reservationInfo"></div>
+
+      <div class="warning-box">
+        キャンセルすると元に戻すことはできません。<br>
+        日時の変更をご希望の場合は「予約変更」をご利用ください。
+      </div>
+
+      <button class="btn btn-danger" id="cancelBtn" onclick="confirmCancel()">この予約をキャンセルする</button>
+      <div style="text-align:center;margin-top:12px;">
+        <a href="javascript:void(0)" onclick="showSearchScreen()" style="color:#667eea;font-size:14px;">戻る</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- 完了画面 -->
+  <div class="screen" id="screen-complete">
+    <div class="card">
+      <div class="complete-msg">
+        <h2 style="color:#e74c3c;">キャンセルが完了しました</h2>
+        <p id="cancelCompleteMsg"></p>
+        <p style="margin-top:16px;">キャンセル確認メールをお送りしました。</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="page-links">
+    <a href="?page=index">新規予約</a> |
+    <a href="?page=change">予約変更</a>
+  </div>
+</div>
+
+<script>
+var webAppUrl = window.location.href.split('?')[0];
+var reservationData = null;
+
+function postData(params) {
+  return new Promise(function(resolve, reject) {
+    fetch(webAppUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(params)
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(result) {
+      if (result.success) resolve(result.data);
+      else reject(result.error || '不明なエラー');
+    })
+    .catch(function(err) { reject('通信エラー: ' + err.message); });
+  });
+}
+
+function showLoading(text) {
+  var overlay = document.getElementById('loading');
+  overlay.querySelector('.loading-text').textContent = text || '処理中...';
+  overlay.classList.add('active');
+}
+
+function hideLoading() {
+  document.getElementById('loading').classList.remove('active');
+}
+
+function showScreen(name) {
+  var screens = document.querySelectorAll('.screen');
+  for (var i = 0; i < screens.length; i++) screens[i].classList.remove('active');
+  document.getElementById('screen-' + name).classList.add('active');
+  window.scrollTo(0, 0);
+}
+
+function showSearchScreen() {
+  showScreen('search');
+}
+
+function searchReservation() {
+  var reservationId = document.getElementById('inputReservationId').value.trim();
+  var name = document.getElementById('inputName').value.trim();
+
+  if (!reservationId || !name) {
+    alert('予約IDと氏名を入力してください。');
+    return;
+  }
+
+  showLoading('予約を検索中...');
+
+  postData({
+    action: 'findReservation',
+    reservationId: reservationId,
+    name: name
+  }).then(function(data) {
+    hideLoading();
+    reservationData = data;
+
+    if (data.status === 'キャンセル') {
+      alert('この予約はすでにキャンセル済みです。');
+      return;
+    }
+
+    // 予約情報を表示
+    var infoHtml =
+      '<div class="info-row"><span class="info-label">予約ID</span><span class="info-value">' + data.reservationId + '</span></div>' +
+      '<div class="info-row"><span class="info-label">予約日</span><span class="info-value">' + data.date + '</span></div>' +
+      '<div class="info-row"><span class="info-label">予約時間</span><span class="info-value">' + data.time + '</span></div>' +
+      '<div class="info-row"><span class="info-label">氏名</span><span class="info-value">' + data.name + '</span></div>' +
+      '<div class="info-row"><span class="info-label">メニュー</span><span class="info-value">' + data.menuName + '</span></div>' +
+      '<div class="info-row"><span class="info-label">料金</span><span class="info-value">¥' + Number(data.price).toLocaleString() + '</span></div>' +
+      '<div class="info-row"><span class="info-label">ステータス</span><span class="info-value">' + data.status + '</span></div>';
+
+    document.getElementById('reservationInfo').innerHTML = infoHtml;
+    showScreen('confirm');
+  }).catch(function(err) {
+    hideLoading();
+    alert(err);
+  });
+}
+
+function confirmCancel() {
+  if (!confirm('本当にこの予約をキャンセルしますか？')) return;
+
+  var btn = document.getElementById('cancelBtn');
+  btn.disabled = true;
+  showLoading('キャンセル処理中...');
+
+  postData({
+    action: 'cancelReservation',
+    reservationId: reservationData.reservationId
+  }).then(function(result) {
+    hideLoading();
+    btn.disabled = false;
+
+    document.getElementById('cancelCompleteMsg').textContent =
+      result.date + ' ' + result.time + ' の予約をキャンセルしました。';
+
+    showScreen('complete');
+  }).catch(function(err) {
+    hideLoading();
+    btn.disabled = false;
+    alert('キャンセルに失敗しました: ' + err);
+  });
+}
+</script>
+</body>
+</html>
