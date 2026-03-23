@@ -278,6 +278,19 @@ function setupInputForm_(ss, sheet) {
   titleRange.setFontColor('#FFFFFF');
   titleRange.setHorizontalAlignment('center');
 
+  // --- 操作ガイド（初心者向けステップ表示） ---
+  var guideRange = sheet.getRange('B2:G2');
+  guideRange.merge();
+  guideRange.setValue(
+    '【操作手順】 ① 書類種別を選択 → ② 顧客を選択 → ③ 日付を入力 → ' +
+    '④ 品目・数量を入力 → ⑤ メニュー「📄 書類生成ツール」→「書類を生成する」'
+  );
+  guideRange.setFontSize(9);
+  guideRange.setFontColor('#333333');
+  guideRange.setBackground('#E8F0FE');
+  guideRange.setWrap(true);
+  sheet.setRowHeight(2, 36);
+
   // --- 書類種別 ---
   sheet.getRange('B3').setValue('書類種別');
   sheet.getRange('B3').setFontWeight('bold');
@@ -300,11 +313,22 @@ function setupInputForm_(ss, sheet) {
   sheet.getRange('C5').setDataValidation(customerRule);
   sheet.getRange('C5').setBackground('#FFF2CC');
 
+  // --- 顧客情報プレビュー（選択した顧客の住所・担当者を自動表示） ---
+  // 顧客を選択すると、その下に担当者と住所が自動で表示される
+  sheet.getRange('D5:G5').merge();
+  sheet.getRange('D5').setFormula(
+    '=IFERROR("担当: "&VLOOKUP(C5,顧客マスタ!B:G,2,FALSE)&"　住所: "&VLOOKUP(C5,顧客マスタ!B:G,4,FALSE),"")'
+  );
+  sheet.getRange('D5').setFontSize(9);
+  sheet.getRange('D5').setFontColor('#666666');
+
   // --- 発行日 ---
   sheet.getRange('B7').setValue('発行日');
   sheet.getRange('B7').setFontWeight('bold');
   sheet.getRange('C7').setNumberFormat('yyyy/MM/dd');
   sheet.getRange('C7').setBackground('#FFF2CC');
+  // デフォルトで今日の日付をセット（初心者が入力忘れしにくいように）
+  sheet.getRange('C7').setValue(new Date());
 
   // --- 支払期限 ---
   sheet.getRange('B9').setValue('支払期限');
@@ -377,10 +401,28 @@ function setupInputForm_(ss, sheet) {
     }
   }
 
+  // --- リアルタイム合計欄（入力中に金額を確認できる） ---
+  // 品目の最終行（品目10 = row 31）の次の行
+  sheet.getRange('E32').setValue('小計（税抜）:');
+  sheet.getRange('E32').setFontWeight('bold');
+  sheet.getRange('E32').setHorizontalAlignment('right');
+  // 全品目の金額を合算する数式を設定
+  var sumFormula = '=';
+  for (var s = 0; s < 10; s++) {
+    var sumRow = 13 + (s * 2);
+    sumFormula += (s > 0 ? '+' : '') + 'G' + sumRow;
+  }
+  sheet.getRange('G32').setFormula(sumFormula);
+  sheet.getRange('G32').setNumberFormat('#,##0');
+  sheet.getRange('G32').setFontWeight('bold');
+  sheet.getRange('G32').setFontSize(12);
+  sheet.getRange('G32').setBackground('#D9E2F3');
+  sheet.getRange('E32:G32').setBorder(true, true, true, true, null, null);
+
   // --- 備考欄 ---
-  sheet.getRange('B33').setValue('備考');
-  sheet.getRange('B33').setFontWeight('bold');
-  var remarksArea = sheet.getRange('C33:G35');
+  sheet.getRange('B34').setValue('備考');
+  sheet.getRange('B34').setFontWeight('bold');
+  var remarksArea = sheet.getRange('C34:G36');
   remarksArea.merge();
   remarksArea.setBackground('#FFF2CC');
   remarksArea.setVerticalAlignment('top');
@@ -393,8 +435,18 @@ function setupInputForm_(ss, sheet) {
   sheet.getRange('B7:C7').setBorder(null, null, true, null, null, null);
   sheet.getRange('B9:C9').setBorder(null, null, true, null, null, null);
 
+  // --- 色分けの凡例（初心者が入力欄と自動計算欄を区別できるように） ---
+  var legendRow = 38;
+  sheet.getRange('B' + legendRow + ':G' + legendRow).merge();
+  sheet.getRange('B' + legendRow).setValue(
+    '【色の説明】  ■ 黄色 = 入力してください　■ 緑色 = 自動計算（入力不要）　■ 青色 = 合計表示'
+  );
+  sheet.getRange('B' + legendRow).setFontSize(9);
+  sheet.getRange('B' + legendRow).setFontColor('#666666');
+  sheet.getRange('B' + legendRow).setBackground('#F5F5F5');
+
   // 行を固定
-  sheet.setFrozenRows(1);
+  sheet.setFrozenRows(2);
 }
 
 /**

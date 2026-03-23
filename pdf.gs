@@ -70,8 +70,11 @@ function exportToPDF(ss, docNumber, docType) {
   // --- 共有設定（リンクを知っている人が閲覧可能） ---
   file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
 
-  // --- 共有リンクを返す ---
-  return file.getUrl();
+  // --- PDFリンクとフォルダリンクの両方を返す ---
+  return {
+    fileUrl: file.getUrl(),
+    folderUrl: folder.getUrl()
+  };
 }
 
 /**

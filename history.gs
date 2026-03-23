@@ -35,7 +35,13 @@ function saveToHistory(docNumber, formData, totalAmount, pdfUrl) {
   sheet.getRange(newRow, 4).setValue(formData.customerName);   // 顧客名
   sheet.getRange(newRow, 5).setValue(totalAmount);             // 合計金額
   sheet.getRange(newRow, 5).setNumberFormat('#,##0');          // 金額フォーマット
-  sheet.getRange(newRow, 6).setValue(pdfUrl);                  // PDFリンク
+
+  // PDFリンクをクリック可能なハイパーリンクとして設定
+  // HYPERLINK関数を使い、セルをクリックするだけでPDFを開けるようにする
+  var linkFormula = '=HYPERLINK("' + pdfUrl + '","PDFを開く")';
+  sheet.getRange(newRow, 6).setFormula(linkFormula);           // PDFリンク
+  sheet.getRange(newRow, 6).setFontColor('#1155CC');           // リンク色（青）
+
   sheet.getRange(newRow, 7).setValue(now);                     // 発行日時
 }
 

@@ -69,18 +69,22 @@ function generateDocument() {
     writeToOutputSheet_(ss, formData, customerData, items, docNumber, companyInfo);
 
     // --- PDF出力 ---
-    var pdfUrl = exportToPDF(ss, docNumber, formData.docType);
+    var pdfResult = exportToPDF(ss, docNumber, formData.docType);
 
     // --- 履歴管理に記録 ---
     var totalAmount = calculateTotal_(items);
-    saveToHistory(docNumber, formData, totalAmount, pdfUrl);
+    saveToHistory(docNumber, formData, totalAmount, pdfResult.fileUrl);
 
-    // --- 完了メッセージ ---
+    // --- 完了メッセージ（PDFリンク＆フォルダリンク付き） ---
     ui.alert(
       '生成完了',
-      formData.docType + 'を生成しました。\n\n' +
+      formData.docType + 'を生成しました！\n\n' +
       '発行番号: ' + docNumber + '\n' +
-      'PDFファイルはGoogleドライブに保存されました。',
+      '合計金額: ¥' + formatNumber_(totalAmount) + '\n\n' +
+      '【PDFファイル】\n' + pdfResult.fileUrl + '\n\n' +
+      '【保存フォルダ（Googleドライブ）】\n' + pdfResult.folderUrl + '\n\n' +
+      '※ 上記リンクをコピーしてブラウザで開くと確認できます。\n' +
+      '※ 「履歴管理」シートからもワンクリックでPDFを開けます。',
       ui.ButtonSet.OK
     );
 
@@ -108,7 +112,7 @@ function getFormData_(ss) {
     customerName: sheet.getRange('C5').getValue(),     // 顧客名
     issueDate: sheet.getRange('C7').getValue(),        // 発行日
     paymentDeadline: sheet.getRange('C9').getValue(),  // 支払期限
-    remarks: sheet.getRange('C33').getValue(),         // 備考欄
+    remarks: sheet.getRange('C34').getValue(),         // 備考欄
     items: []
   };
 
@@ -509,7 +513,7 @@ function clearForm() {
   }
 
   // 備考欄クリア
-  sheet.getRange('C33').clearContent();
+  sheet.getRange('C34').clearContent();
 
   ui.alert('完了', 'フォームをリセットしました。', ui.ButtonSet.OK);
 }
