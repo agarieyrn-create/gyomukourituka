@@ -31,6 +31,9 @@ function generateDocument() {
   var ui = SpreadsheetApp.getUi();
 
   try {
+    // --- キャッシュを初期化（前回実行の残留データをクリア） ---
+    itemMasterCache_ = null;
+
     // --- 入力フォームからデータを取得 ---
     var formData = getFormData_(ss);
 
@@ -175,25 +178,38 @@ function getItemsFromForm_(formData) {
   return items;
 }
 
+// 品目マスタのキャッシュ（1回の書類生成中に同シートを何度も読まないようにする）
+var itemMasterCache_ = null;
+
 /**
  * 品目マスタから品目情報を取得する（内部関数）
  * @param {string} itemName - 品名
  * @return {Object|null} 品目情報
  */
 function getItemMasterData_(itemName) {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var sheet = ss.getSheetByName('品目マスタ');
-  if (!sheet) return null;
+  if (!itemMasterCache_) {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheet = ss.getSheetByName('品目マスタ');
+    if (!sheet) return null;
+    itemMasterCache_ = sheet.getDataRange().getValues();
+  }
 
-  var data = sheet.getDataRange().getValues();
+  var data = itemMasterCache_;
   for (var i = 1; i < data.length; i++) {
     if (data[i][1] === itemName) {
+      var taxCategory = data[i][4];
+      if (taxCategory !== '10%' && taxCategory !== '8%' && taxCategory !== '非課税') {
+        throw new Error(
+          '品目「' + itemName + '」の税区分が不正です: "' + taxCategory + '"\n' +
+          '品目マスタの税区分は「10%」「8%」「非課税」のいずれかを指定してください。'
+        );
+      }
       return {
         itemId: data[i][0],
         name: data[i][1],
         unitPrice: data[i][2],
         unit: data[i][3],
-        taxCategory: data[i][4]
+        taxCategory: taxCategory
       };
     }
   }
@@ -420,7 +436,7 @@ function calculateTaxBreakdown_(items) {
       subtotal10 += amount;
     } else if (taxCat === '8%') {
       subtotal8 += amount;
-    } else {
+    } else { // '非課税'
       subtotalNon += amount;
     }
   }

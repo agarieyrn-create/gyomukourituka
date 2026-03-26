@@ -114,6 +114,27 @@ function initializeSpreadsheet() {
   var ui = SpreadsheetApp.getUi();
 
   try {
+    // --- 既存データの確認 ---
+    var existingSheets = ['顧客マスタ', '品目マスタ'];
+    var hasData = false;
+    for (var s = 0; s < existingSheets.length; s++) {
+      var existing = ss.getSheetByName(existingSheets[s]);
+      if (existing && existing.getLastRow() > 1) {
+        hasData = true;
+        break;
+      }
+    }
+    if (hasData) {
+      var confirm = ui.alert(
+        '⚠️ データが上書きされます',
+        '「顧客マスタ」「品目マスタ」などの既存データがすべて削除されます。\n\n' +
+        '本当に初期化しますか？\n' +
+        '（実行前にデータをバックアップしてください）',
+        ui.ButtonSet.YES_NO
+      );
+      if (confirm !== ui.Button.YES) return;
+    }
+
     // --- 1. 顧客マスタ ---
     var customerSheet = getOrCreateSheet_(ss, '顧客マスタ');
     setupCustomerMaster_(customerSheet);
@@ -305,9 +326,11 @@ function setupInputForm_(ss, sheet) {
   // --- 顧客名 ---
   sheet.getRange('B5').setValue('顧客名');
   sheet.getRange('B5').setFontWeight('bold');
-  // 顧客マスタの会社名からドロップダウンを作成
+  // 顧客マスタの会社名からドロップダウンを作成（末尾行まで動的に取得）
+  var customerMasterSheet = ss.getSheetByName('顧客マスタ');
+  var customerLastRow = Math.max(customerMasterSheet.getLastRow(), 2);
   var customerRule = SpreadsheetApp.newDataValidation()
-    .requireValueInRange(ss.getSheetByName('顧客マスタ').getRange('B2:B100'), true)
+    .requireValueInRange(customerMasterSheet.getRange('B2:B' + customerLastRow), true)
     .setAllowInvalid(false)
     .build();
   sheet.getRange('C5').setDataValidation(customerRule);
@@ -317,7 +340,7 @@ function setupInputForm_(ss, sheet) {
   // 顧客を選択すると、その下に担当者と住所が自動で表示される
   sheet.getRange('D5:G5').merge();
   sheet.getRange('D5').setFormula(
-    '=IFERROR("担当: "&VLOOKUP(C5,顧客マスタ!B:G,2,FALSE)&"　住所: "&VLOOKUP(C5,顧客マスタ!B:G,4,FALSE),"")'
+    '=IFERROR("担当: "&VLOOKUP(C5,顧客マスタ!B:C,2,FALSE)&"　住所: "&VLOOKUP(C5,顧客マスタ!B:E,4,FALSE),"")'
   );
   sheet.getRange('D5').setFontSize(9);
   sheet.getRange('D5').setFontColor('#666666');
@@ -355,9 +378,11 @@ function setupInputForm_(ss, sheet) {
   sheet.getRange('B12:G12').setFontWeight('bold');
   sheet.getRange('B12:G12').setBackground('#D9E2F3');
 
-  // 品目マスタの品名からドロップダウンルールを作成
+  // 品目マスタの品名からドロップダウンルールを作成（末尾行まで動的に取得）
+  var itemMasterSheet = ss.getSheetByName('品目マスタ');
+  var itemLastRow = Math.max(itemMasterSheet.getLastRow(), 2);
   var itemRule = SpreadsheetApp.newDataValidation()
-    .requireValueInRange(ss.getSheetByName('品目マスタ').getRange('B2:B100'), true)
+    .requireValueInRange(itemMasterSheet.getRange('B2:B' + itemLastRow), true)
     .setAllowInvalid(false)
     .build();
 
