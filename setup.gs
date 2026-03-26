@@ -284,9 +284,9 @@ function setupInputForm_(ss, sheet) {
   sheet.setColumnWidth(1, 20);   // A: 余白
   sheet.setColumnWidth(2, 120);  // B: ラベル
   sheet.setColumnWidth(3, 200);  // C: 入力欄（品目名）
-  sheet.setColumnWidth(4, 60);   // D: ラベル2
+  sheet.setColumnWidth(4, 100);  // D: 単価（自動）
   sheet.setColumnWidth(5, 80);   // E: 数量
-  sheet.setColumnWidth(6, 60);   // F: ラベル3
+  sheet.setColumnWidth(6, 60);   // F: 単位（自動）
   sheet.setColumnWidth(7, 120);  // G: 金額
 
   // --- タイトル ---
@@ -303,8 +303,8 @@ function setupInputForm_(ss, sheet) {
   var guideRange = sheet.getRange('B2:G2');
   guideRange.merge();
   guideRange.setValue(
-    '【操作手順】 ① 書類種別を選択 → ② 顧客を選択 → ③ 日付を入力 → ' +
-    '④ 品目・数量を入力 → ⑤ メニュー「📄 書類生成ツール」→「書類を生成する」'
+    '【操作手順】 ① 書類種別を選択 → ② 顧客を選択 → ③ 品目をドロップダウンから選択・数量を入力 → ' +
+    '④ 必要に応じて発行日・支払期限・備考を編集 → ⑤ メニュー「📄 書類生成ツール」→「書類を生成する」'
   );
   guideRange.setFontSize(9);
   guideRange.setFontColor('#333333');
@@ -353,13 +353,14 @@ function setupInputForm_(ss, sheet) {
   // デフォルトで今日の日付をセット（初心者が入力忘れしにくいように）
   sheet.getRange('C7').setValue(new Date());
 
-  // --- 支払期限 ---
+  // --- 支払期限（発行日+30日で自動入力。変更も可能） ---
   sheet.getRange('B9').setValue('支払期限');
   sheet.getRange('B9').setFontWeight('bold');
+  sheet.getRange('C9').setFormula('=IF(C7="","",C7+30)');
   sheet.getRange('C9').setNumberFormat('yyyy/MM/dd');
-  sheet.getRange('C9').setBackground('#FFF2CC');
+  sheet.getRange('C9').setBackground('#E2EFDA');  // 自動計算（緑）
   sheet.getRange('D9:G9').merge();
-  sheet.getRange('D9').setValue('※請求書の場合のみ入力');
+  sheet.getRange('D9').setValue('※請求書のみ（発行日+30日で自動入力。直接入力で変更可）');
   sheet.getRange('D9').setFontColor('#888888');
   sheet.getRange('D9').setFontSize(9);
 
@@ -371,9 +372,9 @@ function setupInputForm_(ss, sheet) {
   // 品目ヘッダー
   sheet.getRange('B12').setValue('No.');
   sheet.getRange('C12').setValue('品名');
-  sheet.getRange('D12').setValue('');
+  sheet.getRange('D12').setValue('単価');
   sheet.getRange('E12').setValue('数量');
-  sheet.getRange('F12').setValue('');
+  sheet.getRange('F12').setValue('単位');
   sheet.getRange('G12').setValue('金額');
   sheet.getRange('B12:G12').setFontWeight('bold');
   sheet.getRange('B12:G12').setBackground('#D9E2F3');
@@ -398,30 +399,37 @@ function setupInputForm_(ss, sheet) {
     sheet.getRange('C' + row).setDataValidation(itemRule);
     sheet.getRange('C' + row).setBackground('#FFF2CC');
 
-    // 「×」ラベル
-    sheet.getRange('D' + row).setValue('×');
-    sheet.getRange('D' + row).setHorizontalAlignment('center');
+    // 単価（品目マスタから自動表示）
+    var unitPriceFormula = '=IFERROR(VLOOKUP(C' + row + ',品目マスタ!B:C,2,FALSE),"")';
+    sheet.getRange('D' + row).setFormula(unitPriceFormula);
+    sheet.getRange('D' + row).setNumberFormat('#,##0');
+    sheet.getRange('D' + row).setHorizontalAlignment('right');
+    sheet.getRange('D' + row).setBackground('#E2EFDA');
 
     // 数量
     sheet.getRange('E' + row).setBackground('#FFF2CC');
     sheet.getRange('E' + row).setNumberFormat('#,##0');
 
-    // 「=」ラベル
-    sheet.getRange('F' + row).setValue('=');
+    // 単位（品目マスタから自動表示）
+    var unitFormula = '=IFERROR(VLOOKUP(C' + row + ',品目マスタ!B:D,3,FALSE),"")';
+    sheet.getRange('F' + row).setFormula(unitFormula);
     sheet.getRange('F' + row).setHorizontalAlignment('center');
+    sheet.getRange('F' + row).setBackground('#E2EFDA');
 
     // 金額（自動計算の数式を設定）
     // VLOOKUP で品目マスタから単価を取得し、数量と掛け算
-    var formula = '=IFERROR(VLOOKUP(C' + row + ',品目マスタ!B:C,2,FALSE)*E' + row + ',"")';
-    sheet.getRange('G' + row).setFormula(formula);
+    var amountFormula = '=IFERROR(VLOOKUP(C' + row + ',品目マスタ!B:C,2,FALSE)*E' + row + ',"")';
+    sheet.getRange('G' + row).setFormula(amountFormula);
     sheet.getRange('G' + row).setNumberFormat('#,##0');
     sheet.getRange('G' + row).setBackground('#E2EFDA');
 
-    // 偶数行に背景色
+    // 偶数行に背景色（入力セルはやや濃い黄、自動計算セルはやや濃い緑）
     if (i % 2 === 1) {
       sheet.getRange('B' + row + ':G' + row).setBackground('#F2F2F2');
       sheet.getRange('C' + row).setBackground('#FFF8E1');
+      sheet.getRange('D' + row).setBackground('#D5E8D4');
       sheet.getRange('E' + row).setBackground('#FFF8E1');
+      sheet.getRange('F' + row).setBackground('#D5E8D4');
       sheet.getRange('G' + row).setBackground('#D5E8D4');
     }
   }
@@ -464,7 +472,7 @@ function setupInputForm_(ss, sheet) {
   var legendRow = 38;
   sheet.getRange('B' + legendRow + ':G' + legendRow).merge();
   sheet.getRange('B' + legendRow).setValue(
-    '【色の説明】  ■ 黄色 = 入力してください　■ 緑色 = 自動計算（入力不要）　■ 青色 = 合計表示'
+    '【色の説明】  ■ 黄色 = 入力してください　■ 緑色 = 自動入力（単価・単位・金額・支払期限）　■ 青色 = 合計表示'
   );
   sheet.getRange('B' + legendRow).setFontSize(9);
   sheet.getRange('B' + legendRow).setFontColor('#666666');

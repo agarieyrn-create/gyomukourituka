@@ -515,10 +515,10 @@ function clearForm() {
   sheet.getRange('C3').clearContent();
   // 顧客名クリア
   sheet.getRange('C5').clearContent();
-  // 発行日クリア
-  sheet.getRange('C7').clearContent();
-  // 支払期限クリア
-  sheet.getRange('C9').clearContent();
+  // 発行日を今日の日付にリセット
+  sheet.getRange('C7').setValue(new Date());
+  // 支払期限を自動入力式にリセット（発行日+30日）
+  sheet.getRange('C9').setFormula('=IF(C7="","",C7+30)');
 
   // 品目1〜10をクリア
   for (var i = 0; i < 10; i++) {
